@@ -15,7 +15,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error reading input: %v\n", err)
 		os.Exit(1)
 	}
-	p1, p2 := solve2(strings.TrimSpace(string(input)))
+	p1, p2 := solve(strings.TrimSpace(string(input)))
 	fmt.Printf("%s\n%s\n", p1, p2)
 }
 
@@ -43,7 +43,7 @@ func parseInput(input string) []pair {
 	return lists
 }
 
-func solve2(input string) (string, string) {
+func solve(input string) (string, string) {
 	var (
 		lists = parseInput(input)
 		p1    = solve_part1(lists)
