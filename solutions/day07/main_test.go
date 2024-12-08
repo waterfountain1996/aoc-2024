@@ -42,7 +42,7 @@ func TestSolve_Part2(t *testing.T) {
 	}{
 		{"156: 15 6", 156},
 		{"7290: 6 8 6 15", 7290},
-		{testInput,  11387},
+		{testInput, 11387},
 	}
 
 	for i, tt := range testcases {
