@@ -47,6 +47,26 @@ func solve_part1(lines [][]byte) int {
 		return p[0] < 0 || p[0] >= len(lines) || p[1] < 0 || p[1] >= len(lines[p[0]])
 	}
 
+	walkLine := func(a, b point, isOOB func(point) bool, reverse bool, f func(p point) bool) {
+		prev, curr := a, b
+		if reverse {
+			prev, curr = curr, prev
+		}
+
+		for {
+			next := point{2*curr[0] - prev[0], 2*curr[1] - prev[1]}
+			if isOOB(next) {
+				return
+			}
+
+			if ok := f(next); !ok {
+				return
+			}
+
+			prev, curr = curr, next
+		}
+	}
+
 	antinodes := make(map[point]struct{})
 	for _, pts := range antennas {
 		for i := 0; i < len(pts); i++ {
@@ -80,6 +100,28 @@ func solve_part2(lines [][]byte) int {
 		return p[0] < 0 || p[0] >= len(lines) || p[1] < 0 || p[1] >= len(lines[p[0]])
 	}
 
+	walkLine := func(a, b point, isOOB func(point) bool, reverse bool, f func(point) bool) {
+		node := a
+		dy, dx := b[0]-a[0], b[1]-a[1]
+		if reverse {
+			node = b
+			dy, dx = a[0]-b[0], a[1]-b[1]
+		}
+
+		for {
+			next := point{node[0] + dy, node[1] + dx}
+			if isOOB(next) {
+				return
+			}
+
+			if ok := f(next); !ok {
+				return
+			}
+
+			node = next
+		}
+	}
+
 	antinodes := make(map[point]struct{})
 
 	for _, pts := range antennas {
@@ -97,26 +139,4 @@ func solve_part2(lines [][]byte) int {
 	}
 
 	return len(antinodes)
-}
-
-func walkLine(a, b point, isOOB func(point) bool, reverse bool, f func(point) bool) {
-	node := a
-	dy, dx := b[0]-a[0], b[1]-a[1]
-	if reverse {
-		node = b
-		dy, dx = a[0]-b[0], a[1]-b[1]
-	}
-
-	for {
-		next := point{node[0] + dy, node[1] + dx}
-		if isOOB(next) {
-			return
-		}
-
-		if ok := f(next); !ok {
-			return
-		}
-
-		node = next
-	}
 }
