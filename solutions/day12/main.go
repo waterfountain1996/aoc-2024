@@ -22,7 +22,8 @@ func main() {
 func solve(input []byte) (string, string) {
 	lines := bytes.Split(bytes.TrimSpace(input), []byte{'\n'})
 	p1 := solve_part1(lines)
-	return strconv.Itoa(p1), ""
+	p2 := solve_part2(lines)
+	return strconv.Itoa(p1), strconv.Itoa(p2)
 }
 
 type point [2]int
@@ -93,21 +94,22 @@ func (s segment) String() string {
 	return fmt.Sprintf("[%d; %d)", s.Start, s.Start+s.Length)
 }
 
-func (r region) Sides() int {
+type level []segment
+
+func (r region) levels() (horizontal, vertical []level) {
 	var (
 		ymin, ymax int
 		xmin, xmax int
 	)
 	for p := range r {
 		y, x := p[0], p[1]
-
 		ymin, ymax = min(y, ymin), max(y, ymax)
 		xmin, xmax = min(x, xmin), max(x, xmax)
 	}
 
-	levels := make([][]segment, 0, ymax-ymin)
+	var lh []level
 	for y := ymin; y <= ymax; y++ {
-		var lvl []segment
+		var lvl level
 
 		for x := xmin; x <= xmax; x++ {
 			start := x
@@ -123,78 +125,82 @@ func (r region) Sides() int {
 			}
 		}
 		if len(lvl) > 0 {
-			levels = append(levels, lvl)
+			lh = append(lh, lvl)
 		}
 	}
-	return 0
+
+	var lv []level
+	for x := xmax; x >= xmin; x-- {
+		var lvl level
+		for y := ymin; y <= ymax; y++ {
+			start := y
+			for {
+				p := point{y, x}
+				if _, ok := r[p]; !ok {
+					if y-start > 0 {
+						lvl = append(lvl, segment{start, y - start})
+					}
+					break
+				}
+				y++
+			}
+		}
+		if len(lvl) > 0 {
+			lv = append(lv, lvl)
+		}
+	}
+
+	return lh, lv
 }
 
-// MergeSegments combines and sorts the points from two levels.
+func (r region) Sides() int {
+	var total int
 
-func FindNonOverlappingSegments(level1, level2 []segment) []segment {
-	type Point struct {
-		Position int
-		Change   int
-	}
-	points := []Point{}
+	lh, lv := r.levels()
+	for _, levels := range [][]level{lh, lv} {
+		total += len(levels[0])
 
-	// Convert segments to points
-	for _, seg := range level1 {
-		points = append(points, Point{Position: seg.Start, Change: 1})
-		points = append(points, Point{Position: seg.Start + seg.Length, Change: -1})
-	}
-	for _, seg := range level2 {
-		points = append(points, Point{Position: seg.Start, Change: 2})
-		points = append(points, Point{Position: seg.Start + seg.Length, Change: -2})
-	}
-
-	// Sort points by position, with ties broken by Change value
-	sort.Slice(points, func(i, j int) bool {
-		if points[i].Position == points[j].Position {
-			return points[i].Change < points[j].Change
+		for i := 1; i < len(levels); i++ {
+			a, b := levels[i-1], levels[i]
+			total += len(nonOverlapping(a, b))
 		}
-		return points[i].Position < points[j].Position
+
+		n := len(levels)
+		total += len(levels[n-1])
+	}
+
+	return total
+}
+
+func nonOverlapping(a, b []segment) []segment {
+	var pts [][2]int
+	for _, s := range a {
+		pts = append(pts, [2]int{s.Start, 1}, [2]int{s.End() + 1, -1})
+	}
+	for _, s := range b {
+		pts = append(pts, [2]int{s.Start, -1}, [2]int{s.End() + 1, 1})
+	}
+	sort.SliceStable(pts, func(i, j int) bool {
+		return pts[i][0] < pts[j][0]
 	})
 
+	var state, start int
 	var result []segment
-	currentLevel1 := 0
-	currentLevel2 := 0
-	lastPosition := -1
-
-	for _, point := range points {
-		// If we have moved to a new position, evaluate the interval
-		if lastPosition != -1 && point.Position > lastPosition {
-			if (currentLevel1 > 0 && currentLevel2 == 0) || (currentLevel2 > 0 && currentLevel1 == 0) {
+	for _, p := range pts {
+		x, d := p[0], p[1]
+		state += d
+		if state != 0 {
+			start = x
+		} else {
+			if x != start {
 				result = append(result, segment{
-					Start:  lastPosition,
-					Length: point.Position - lastPosition,
+					Start:  start,
+					Length: x - start,
 				})
 			}
 		}
-
-		// Update level counts based on the change
-		switch point.Change {
-		case 1:
-			currentLevel1++
-		case -1:
-			currentLevel1--
-		case 2:
-			currentLevel2++
-		case -2:
-			currentLevel2--
-		}
-
-		lastPosition = point.Position
 	}
-
 	return result
-}
-
-func abs(i int) int {
-	if i < 0 {
-		i = -i
-	}
-	return i
 }
 
 func solve_part1(lines [][]byte) int {
@@ -214,7 +220,7 @@ func calculateTotal(lines [][]byte, f func(region) int) int {
 	seen := make(map[point]bool)
 	for y, line := range lines {
 		for x, plant := range line {
-			if plant != 'I' {
+			if plant != 'F' {
 				// continue
 			}
 
